@@ -33,21 +33,23 @@ while (1 == 1):
 	print("\n" + str(datetime.datetime.now()))
 	raw = send_request()
 	jsonData = json.loads(str(raw))
-	spiderShows = {}
+	shows = {}
 	oldOutput = output
 	output = ""
 	for film in jsonData["films"]:
-		if film["id"] == "7161":
-			for show in film["showings"]:
-				if show["date_time"] == "2019-07-10":
-					spiderShows = show
-	output += "Spettacoli del 10 luglio: \n"
-	for show in spiderShows["times"]:
-		output += "- Orario: " + show.get("time") + ", sala: " + show.get("screen_number") + "\n"
+		for show in film.get("showings"):
+			if show["date_time"] == "2019-07-10":
+				shows[film.get("title")] = show
+
+	for title, detail in shows.items():
+		output += title + "\n"
+		for show in detail["times"]:
+			output += "- Orario: " + show.get("time") + ", sala: " + show.get("screen_number") + "\n"
+		output += "\n"
 
 	if oldOutput != output:
-		send(output, my_id)
 		print(output)
+		send(output, my_id)
 	else:
 		print(":(")
 	
