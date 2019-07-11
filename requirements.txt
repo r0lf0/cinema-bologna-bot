@@ -1,0 +1,4 @@
+telepot==12.7
+requests==2.22.0
+jsonschema==2.6.0
+emoji==0.5.2
