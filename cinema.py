@@ -25,9 +25,9 @@ def handle(msg):
 		if (input in aiuto):
 			bot.sendMessage(chat_id, msg_benvenuto)
 		elif input in programmazioneGiornaliera:
-			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER DATA--\n\n" + emoji.emojize(oldDB.getSpettacoliPerData(), use_aliases=True) + "\n\n\n")
+			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER DATA--\n\n" + emoji.emojize(currentDB.getSpettacoliPerData(), use_aliases=True) + "\n\n\n")
 		elif input in programmazionePerFilm:	
-			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER FILM--\n\n" + emoji.emojize(str(oldDB), use_aliases=True) + "\n\n\n")
+			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER FILM--\n\n" + emoji.emojize(str(currentDB), use_aliases=True) + "\n\n\n")
 		elif input in aggiornamento:
 			bot.sendMessage(chat_id, emoji.emojize(differenze, use_aliases=True) + "\n\n\n")
 		else:
@@ -77,11 +77,11 @@ while (1 == 1):
 			print(":)")
 			oldDB = currentDB
 			currentDB = tempDB
-			differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" + emoji.emojize(oldDB.getDifferenze(currentDB).getSpettacoliPerData(), use_aliases=True) + "\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" + emoji.emojize(currentDB.getDifferenze(oldDB).getSpettacoliPerData(), use_aliases=True))
+			differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" + emoji.emojize(oldDB.getDifferenze(currentDB).getSpettacoliPerData(), use_aliases=True) + "\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" + emoji.emojize(currentDB.getDifferenze(oldDB).getSpettacoliPerData(), use_aliases=True) + "\n\npenultimo aggiornamento:\n" + oldDB.dataUltimaModifica[0:16] + "\nultimo aggiornamento:\n" + currentDB.dataUltimaModifica[0:16])
 			bot.sendMessage(my_id, "Programmazione aggiornata!")
 	except Exception as e:
-	 	print("ERRORE")
-	  	logging.error(e)
-	 	bot.sendMessage(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
+		print("ERRORE")
+		logging.error(e)
+		bot.sendMessage(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
 		
 	time.sleep(300)
