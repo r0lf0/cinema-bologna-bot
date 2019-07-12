@@ -1,4 +1,4 @@
-import requests, json, time, datetime, telepot, sys, emoji, logging
+import requests, json, time, datetime, telepot, sys, emoji, logging, os
 from telepot.loop import MessageLoop
 from DB import DB
 from Film import Film
@@ -6,8 +6,8 @@ from Giorno import Giorno
 from Spettacolo import Spettacolo
 
 # token that can be generated talking with @BotFather on telegram
-my_token = TOKEN_HEROKU
-my_id = MY_ID_HEROKU
+my_token = os.environ.get('TOKEN_HEROKU')
+my_id = os.environ.get('MY_ID_HEROKU')
 
 aiuto = ["aiuto", "/aiuto", "help", "/help", "/start"]
 programmazioneGiornaliera = ["/showperdata"]
