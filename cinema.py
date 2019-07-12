@@ -72,6 +72,7 @@ while (1 == 1):
 			tempDB.add(filmDB)
 		
 		if currentDB == tempDB:
+			currentDB.dataUltimaModifica = currentTime
 			print(":(")
 		else:
 			print(":)")
