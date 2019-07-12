@@ -1,13 +1,14 @@
 import requests, json, time, datetime, telepot, sys, emoji, logging
 from telepot.loop import MessageLoop
+from boto.s3.connection import S3Connection
 from DB import DB
 from Film import Film
 from Giorno import Giorno
 from Spettacolo import Spettacolo
 
 # token that can be generated talking with @BotFather on telegram
-my_token = '732570219:AAGhw-q3GDgrNAUO9RhK4MSl4wlyrI6dyG4'
-my_id = 49267778
+my_token = TOKEN_HEROKU
+my_id = MY_ID_HEROKU
 
 aiuto = ["aiuto", "/aiuto", "help", "/help", "/start"]
 programmazioneGiornaliera = ["/showperdata"]
@@ -48,6 +49,7 @@ def send_request():
 
 
 logging.basicConfig(filename='bot.log', format='[%(asctime)s]%(levelname)s:%(message)s', level=logging.DEBUG)
+s3 = S3Connection(os.environ['S3_KEY'], os.environ['S3_SECRET'])
 bot = telepot.Bot(my_token)
 bot.sendMessage(my_id, msg_benvenuto)
 MessageLoop(bot, handle).run_as_thread()
