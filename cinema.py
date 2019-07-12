@@ -1,4 +1,6 @@
 import requests, json, time, datetime, telepot, sys, emoji, logging, os
+from pytz import timezone
+import pytz
 from telepot.loop import MessageLoop
 from DB import DB
 from Film import Film
@@ -29,7 +31,7 @@ def handle(msg):
 		elif input in programmazionePerFilm:	
 			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER FILM--\n\n" + emoji.emojize(str(currentDB), use_aliases=True) + "\n\n\n")
 		elif input in aggiornamento:
-			bot.sendMessage(chat_id, emoji.emojize(differenze, use_aliases=True) + "\n\n\n")
+			bot.sendMessage(chat_id, emoji.emojize(differenze, use_aliases=True) + "\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" + emoji.emojize(currentDB.getDifferenze(oldDB).getSpettacoliPerData(), use_aliases=True) + "\n\npenultimo aggiornamento:\n" + oldDB.dataUltimaModifica[0:16] + "\nultimo aggiornamento:\n" + currentDB.dataUltimaModifica[0:16])
 		else:
 			logging.warning("Messaggio sconosciuto ricevuto - " + msg)
 			bot.sendMessage(chat_id, emoji.emojize("Non ho capito... :sob:", use_aliases=True))
@@ -56,7 +58,7 @@ currentDB = DB()
 differenze = ""
 while (1 == 1):
 	try:
-		currentTime = str(datetime.datetime.now())
+		currentTime = str(datetime.datetime.now(pytz.timezone('Europe/Rome')))
 		tempDB = DB()
 		print("\n" + currentTime)
 		raw = send_request()
@@ -72,13 +74,13 @@ while (1 == 1):
 			tempDB.add(filmDB)
 		
 		if currentDB == tempDB:
-			currentDB.dataUltimaModifica = currentTime
+			currentDB = tempDB
 			print(":(")
 		else:
 			print(":)")
 			oldDB = currentDB
 			currentDB = tempDB
-			differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" + emoji.emojize(oldDB.getDifferenze(currentDB).getSpettacoliPerData(), use_aliases=True) + "\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" + emoji.emojize(currentDB.getDifferenze(oldDB).getSpettacoliPerData(), use_aliases=True) + "\n\npenultimo aggiornamento:\n" + oldDB.dataUltimaModifica[0:16] + "\nultimo aggiornamento:\n" + currentDB.dataUltimaModifica[0:16])
+			differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" + emoji.emojize(oldDB.getDifferenze(currentDB).getSpettacoliPerData(), use_aliases=True))
 			bot.sendMessage(my_id, "Programmazione aggiornata!")
 	except Exception as e:
 		print("ERRORE")

@@ -1,11 +1,13 @@
 import datetime
+from pytz import timezone
+import pytz
 
 
 class DB():
 
     def __init__(self):
         self.films = []
-        self.dataUltimaModifica = str(datetime.datetime.now())
+        self.dataUltimaModifica = str(datetime.datetime.now(pytz.timezone('Europe/Rome')))
 
     def __str__(self):
         output = ""
@@ -41,7 +43,7 @@ class DB():
 
     def add(self, film):
         self.films.append(film)
-        self.dataUltimaModifica = str(datetime.datetime.now())
+        self.dataUltimaModifica = str(datetime.datetime.now(pytz.timezone('Europe/Rome')))
 
     def getSpettacoliPerData(self):
         dateFormattate = []
