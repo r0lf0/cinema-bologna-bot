@@ -14,3 +14,12 @@ class Spettacolo():
     
     def __hash__(self):
         return hash(str(self))
+
+    def toCsv(self, titoloData):
+        output = ""
+        if self is None:
+            return output
+        if self.orario is None or self.sala is None:
+            return output
+        
+        return titoloData + self.orario + ";" + self.sala + "\n"

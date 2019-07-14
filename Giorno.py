@@ -1,19 +1,19 @@
 import datetime
+from Spettacolo import Spettacolo
 
 
 class Giorno():
 
-    def __init__(self, data, dataFormattata, spettacoli):
+    def __init__(self, data, dataFormattata, spettacoli=None):
         self.data = data
-        self.spettacoli = spettacoli
         format_str = '%Y-%m-%d'  # The format
-        self.dataFormattata = datetime.datetime.strptime(dataFormattata, format_str)
-
-    def __init__(self, data, dataFormattata):
-        self.data = data
-        self.spettacoli = []
-        format_str = '%Y-%m-%d'  # The format
-        self.dataFormattata = datetime.datetime.strptime(dataFormattata, format_str)
+        self.dataFormattata = datetime.datetime.strptime(dataFormattata[0:10], format_str)
+        if isinstance(spettacoli, list):
+            self.spettacoli = spettacoli
+        elif isinstance(spettacoli, Spettacolo):
+            self.spettacoli = [spettacoli]
+        else:
+            self.spettacoli = []
 
     def __str__(self):
         output = self.data + "\n"
@@ -38,9 +38,9 @@ class Giorno():
                 output += " -" + str(spettacolo) + "\n"
         return output
     
-    def getSpettacolo(self, orario):
+    def getSpettacolo(self, orario, sala):
         for spettacolo in self.spettacoli:
-            if spettacolo.orario == orario:
+            if spettacolo.orario == orario and spettacolo.sala == sala:
                 return orario
         return None
 
@@ -58,3 +58,14 @@ class Giorno():
             if spettacoloOther is not None and (spettacoloSelf.sala != spettacoloOther.sala):
                 outGiorno.add(spettacoloSelf)
         return outFilm   
+
+    def toCsv(self, titolo):
+        output = ""
+        if self is None:
+            return output
+        if self.spettacoli == []:
+            return output
+        
+        for spettacolo in self.spettacoli:
+            output += spettacolo.toCsv(titolo + self.data + ";" + str(self.dataFormattata) + ";")
+        return output

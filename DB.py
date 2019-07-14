@@ -1,13 +1,39 @@
 import datetime
 from pytz import timezone
 import pytz
+from Film import Film
+from Giorno import Giorno
+from Spettacolo import Spettacolo
 
 
 class DB():
-
-    def __init__(self):
-        self.films = []
-        self.dataUltimaModifica = str(datetime.datetime.now(pytz.timezone('Europe/Rome')))
+    
+    def __init__(self, inputCsv="NienteCsv"):
+        if inputCsv == "NienteCsv":
+            self.films = []
+            self.dataUltimaModifica = str(datetime.datetime.now(pytz.timezone('Europe/Rome')))
+        else:        
+            self.films = []
+            for line in inputCsv.split('\n'):
+                campi = line.split(';')
+                if campi[0] == "DataUltimaModifica":
+                    self.dataUltimaModifica = campi[1]
+                elif len(campi) == 5:
+                    spettacoloCsv = Spettacolo(campi[3], campi[4])
+                    giornoCsv = Giorno(campi[1], campi[2], [spettacoloCsv])
+                    filmCsv = Film(campi[0], [giornoCsv])       
+                    film = self.getFilm(filmCsv.titolo)
+                    if film is not None:
+                        giorno = film.getGiorno(giornoCsv.data)
+                        if giorno is not None:
+                            spettacolo = giorno.getSpettacolo(spettacoloCsv.orario, spettacoloCsv.sala)
+                            if spettacolo is None:
+                                giorno.add(spettacoloCsv)
+                            # else: due entry uguali
+                        else:
+                                film.add(giornoCsv)
+                    else:
+                        self.add(filmCsv)
 
     def __str__(self):
         output = ""
@@ -70,13 +96,31 @@ class DB():
             return None
         if other is None:
             return self
- 
-        outDB = DB()       
-        for film in set(self.films) - set(other.films):
-            outDB.add(film)
-        for filmSelf in self.films:
-            filmOther = other.getFilm(filmSelf.titolo)
-            if filmOther is not None:
-                outDB.add(filmSelf.getDifferenze(filmOther))
+        
+        outCsv = ""
+        selfCsv = self.toCsv()
+        otherCsv = other.toCsv()
+              
+        for lineSelf in selfCsv.split("\n"):
+            if lineSelf.split(';')[0] != "DataUltimaModifica":
+                trovato = False
+                for lineOther in otherCsv.split("\n"):
+                    if lineSelf == lineOther:
+                        trovato = True
+                if trovato == False:
+                    outCsv += lineSelf + "\n"
+                
+        outDB = DB(outCsv)      
         return outDB
         
+    def toCsv(self):
+        output = ""
+        if self is None:
+            return output
+        output += "DataUltimaModifica;" + self.dataUltimaModifica + "\n"
+        if self.films == []:
+            return output
+        for film in self.films:
+            output += film.toCsv()
+        return output
+

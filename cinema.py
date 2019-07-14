@@ -30,8 +30,10 @@ def handle(msg):
 			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER DATA--\n\n" + emoji.emojize(currentDB.getSpettacoliPerData(), use_aliases=True) + "\n\n\n")
 		elif input in programmazionePerFilm:	
 			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER FILM--\n\n" + emoji.emojize(str(currentDB), use_aliases=True) + "\n\n\n")
-		elif input in aggiornamento:
-			bot.sendMessage(chat_id, emoji.emojize(differenze, use_aliases=True) + "\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" + emoji.emojize(currentDB.getDifferenze(oldDB).getSpettacoliPerData(), use_aliases=True) + "\n\npenultimo aggiornamento:\n" + oldDB.dataUltimaModifica[0:16] + "\nultimo aggiornamento:\n" + currentDB.dataUltimaModifica[0:16])
+		elif input in aggiornamento:  # la parte degli orari è qui per ridurre il numero di calcoli delle differenze
+			bot.sendMessage(chat_id, emoji.emojize(differenze
+					+"\n\npenultimo aggiornamento:\n" + oldDB.dataUltimaModifica[0:16] 
+					+"\nultimo aggiornamento:\n" + currentDB.dataUltimaModifica[0:16], use_aliases=True))
 		else:
 			logging.warning("Messaggio sconosciuto ricevuto - " + msg)
 			bot.sendMessage(chat_id, emoji.emojize("Non ho capito... :sob:", use_aliases=True))
@@ -72,7 +74,7 @@ while (1 == 1):
 					giornoDB.add(spettacoloDB)
 				filmDB.add(giornoDB)
 			tempDB.add(filmDB)
-		
+			
 		if currentDB == tempDB:
 			currentDB = tempDB
 			print(":(")
@@ -80,8 +82,12 @@ while (1 == 1):
 			print(":)")
 			oldDB = currentDB
 			currentDB = tempDB
-			differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" + emoji.emojize(oldDB.getDifferenze(currentDB).getSpettacoliPerData(), use_aliases=True))
+			differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" 
+						+oldDB.getDifferenze(currentDB).getSpettacoliPerData() 
+						+"\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" 
+						+currentDB.getDifferenze(oldDB).getSpettacoliPerData())
 			bot.sendMessage(my_id, "Programmazione aggiornata!")
+
 	except Exception as e:
 		print("ERRORE")
 		logging.error(e)

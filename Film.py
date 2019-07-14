@@ -1,12 +1,17 @@
+from Giorno import Giorno
+from Spettacolo import Spettacolo
+
+
 class Film():
 
-    def __init__(self, titolo, giorni):
+    def __init__(self, titolo, giorni=None):
         self.titolo = titolo
-        self.giorni = giorni
-
-    def __init__(self, titolo):
-        self.titolo = titolo
-        self.giorni = []
+        if isinstance(giorni, list):
+            self.giorni = giorni
+        elif isinstance(giorni, Giorno):
+            self.giorni = [giorni]
+        else:
+            self.giorni = []
 
     def __str__(self):
         output = ":clapper: " + self.titolo + " :clapper:" + "\n"
@@ -45,3 +50,15 @@ class Film():
             if giornoOther is not None:
                 outFilm.add(giornoSelf.getDifferenze(giornoOther))
         return outFilm
+    
+    def toCsv(self):
+        output = ""
+        if self is None:
+            return output
+        if self.giorni == []:
+            return output
+        
+        for giorno in self.giorni:
+            output += giorno.toCsv(self.titolo + ";")
+        return output
+            
