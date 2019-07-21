@@ -85,6 +85,22 @@ class DB():
             output += self.getSpettacoliPerDataFormattata(dataFormattata) + "\n"
         return output
     
+    def getSpettacoliSettimanaPerData(self):
+        traUnaSettimana = datetime.datetime.today() + datetime.timedelta(days=7)
+        dateFormattate = []
+        for film in self.films:
+            for giorno in film.giorni:
+                if giorno.spettacoli != []:
+                    if giorno.dataFormattata not in dateFormattate:
+                        dateFormattate.append(giorno.dataFormattata)
+
+        output = ""
+        dateFormattate.sort()
+        for dataFormattata in dateFormattate:
+            if dataFormattata < traUnaSettimana:
+                output += self.getSpettacoliPerDataFormattata(dataFormattata) + "\n"
+        return output
+    
     def getFilm(self, titolo):
         for film in self.films:
             if film.titolo == titolo:

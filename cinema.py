@@ -13,6 +13,7 @@ my_id = os.environ.get('MY_ID_HEROKU')
 
 aiuto = ["aiuto", "/aiuto", "help", "/help", "/start"]
 programmazioneGiornaliera = ["/showperdata"]
+programmazioneGiornalieraCompleta = ["/showperdataall", "/showperdatacomplete", "/showperdatatutti"]
 programmazionePerFilm = ["/showperfilm"]
 aggiornamento = ["/update", "/aggiornamenti", "/aggiornamento"]
 
@@ -20,35 +21,43 @@ msg_benvenuto = "Ciao, sono il bot non ufficiale del The Space di Bologna. Ecco 
 
  
 def handle(msg):
-	content_type, chat_type, chat_id = telepot.glance(msg)
-	if content_type == 'text':
-		logging.info(msg)
-		input = msg.get("text").strip().lower()
-		if (input in aiuto):
-			bot.sendMessage(chat_id, msg_benvenuto)
-		elif input in programmazioneGiornaliera:
-			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER DATA--\n\n" + emoji.emojize(currentDB.getSpettacoliPerData(), use_aliases=True) + "\n\n\n")
-		elif input in programmazionePerFilm:	
-			bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER FILM--\n\n" + emoji.emojize(str(currentDB), use_aliases=True) + "\n\n\n")
-		elif input in aggiornamento:  # la parte degli orari è qui per ridurre il numero di calcoli delle differenze
-			bot.sendMessage(chat_id, emoji.emojize(differenze
-					+"\n\npenultimo aggiornamento:\n" + oldDB.dataUltimaModifica[0:16] 
-					+"\nultimo aggiornamento:\n" + currentDB.dataUltimaModifica[0:16], use_aliases=True))
-		else:
-			logging.warning("Messaggio sconosciuto ricevuto - " + msg)
-			bot.sendMessage(chat_id, emoji.emojize("Non ho capito... :sob:", use_aliases=True))
+    content_type, chat_type, chat_id = telepot.glance(msg)
+    if content_type == 'text':
+        logging.info(msg)
+        input = msg.get("text").strip().lower()
+        if (input in aiuto):
+            bot.sendMessage(chat_id, msg_benvenuto)
+        elif input in programmazioneGiornaliera:
+            bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER DATA--\n\n" 
+                            +emoji.emojize(currentDB.getSpettacoliSettimanaPerData(), use_aliases=True) 
+                            +"\n\nSono mostrati gli spettacoli dei prossimi 7 giorni, per vederli tutti digita /showPerDataAll.")
+        elif input in programmazioneGiornalieraCompleta:
+            bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER DATA--\n\n" 
+                            +emoji.emojize(currentDB.getSpettacoliPerData(), use_aliases=True) 
+                            +"\n\n\n")
+        elif input in programmazionePerFilm:    
+            bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER FILM--\n\n" 
+                            +emoji.emojize(str(currentDB), use_aliases=True) 
+                            +"\n\n\n")
+        elif input in aggiornamento:  # la parte degli orari è qui per ridurre il numero di calcoli delle differenze
+            bot.sendMessage(chat_id, emoji.emojize(differenze
+                    +"\n\npenultimo aggiornamento:\n" + oldDB.dataUltimaModifica[0:16] 
+                    +"\nultimo aggiornamento:\n" + currentDB.dataUltimaModifica[0:16], use_aliases=True))
+        else:
+            logging.warning("Messaggio sconosciuto ricevuto - " + msg)
+            bot.sendMessage(chat_id, emoji.emojize("Non ho capito... :sob:", use_aliases=True))
 
 
 def send_request():
-	try:
-		response = requests.get(
-			url="https://www.thespacecinema.it/data/filmswithshowings/3",
-		)
-		print('Response HTTP Status Code: {status_code}'.format(
-			status_code=response.status_code))
-		return response.text
-	except requests.exceptions.RequestException:
-		print('HTTP Request failed')
+    try:
+        response = requests.get(
+            url="https://www.thespacecinema.it/data/filmswithshowings/3",
+        )
+        print('Response HTTP Status Code: {status_code}'.format(
+            status_code=response.status_code))
+        return response.text
+    except requests.exceptions.RequestException:
+        print('HTTP Request failed')
 
 
 logging.basicConfig(filename='bot.log', format='[%(asctime)s]%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -59,38 +68,38 @@ oldDB = DB()
 currentDB = DB()
 differenze = ""
 while (1 == 1):
-	try:
-		currentTime = str(datetime.datetime.now(pytz.timezone('Europe/Rome')))
-		tempDB = DB()
-		print("\n" + currentTime)
-		raw = send_request()
-		jsonData = json.loads(str(raw))
-		for filmTS in jsonData["films"]:
-			filmDB = Film(filmTS.get("title"))
-			for showingTS in filmTS["showings"]:
-				giornoDB = Giorno(showingTS.get("date_short"), showingTS.get("date_time"))
-				for timeTS in showingTS["times"]:
-					spettacoloDB = Spettacolo(timeTS.get("time"), timeTS.get("screen_number"))
-					giornoDB.add(spettacoloDB)
-				filmDB.add(giornoDB)
-			tempDB.add(filmDB)
-			
-		if currentDB == tempDB:
-			currentDB = tempDB
-			print(":(")
-		else:
-			print(":)")
-			oldDB = currentDB
-			currentDB = tempDB
-			differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" 
-						+oldDB.getDifferenze(currentDB).getSpettacoliPerData() 
-						+"\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" 
-						+currentDB.getDifferenze(oldDB).getSpettacoliPerData())
-			bot.sendMessage(my_id, "Programmazione aggiornata!")
+    try:
+        currentTime = str(datetime.datetime.now(pytz.timezone('Europe/Rome')))
+        tempDB = DB()
+        print("\n" + currentTime)
+        raw = send_request()
+        jsonData = json.loads(str(raw))
+        for filmTS in jsonData["films"]:
+            filmDB = Film(filmTS.get("title"))
+            for showingTS in filmTS["showings"]:
+                giornoDB = Giorno(showingTS.get("date_short"), showingTS.get("date_time"))
+                for timeTS in showingTS["times"]:
+                    spettacoloDB = Spettacolo(timeTS.get("time"), timeTS.get("screen_number"))
+                    giornoDB.add(spettacoloDB)
+                filmDB.add(giornoDB)
+            tempDB.add(filmDB)
+            
+        if currentDB == tempDB:
+            currentDB = tempDB
+            print(":(")
+        else:
+            print(":)")
+            oldDB = currentDB
+            currentDB = tempDB
+            differenze = (":no_entry: SPETTACOLI RIMOSSI :no_entry:\n" 
+                        +oldDB.getDifferenze(currentDB).getSpettacoliPerData() 
+                        +"\n\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n" 
+                        +currentDB.getDifferenze(oldDB).getSpettacoliPerData())
+            bot.sendMessage(my_id, "Programmazione aggiornata!")
 
-	except Exception as e:
-		print("ERRORE")
-		logging.error(e)
-		bot.sendMessage(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
-		
-	time.sleep(300)
+    except Exception as e:
+        print("ERRORE")
+        logging.error(e)
+        bot.sendMessage(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
+        
+    time.sleep(300)
