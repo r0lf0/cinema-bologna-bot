@@ -8,8 +8,7 @@ from sqlite3.dbapi2 import Connection
 
 import emoji
 import requests
-import telepot
-from telepot.loop import MessageLoop
+from telegram.ext import Updater, CommandHandler, Filters, MessageHandler
 
 import handleDB
 from Film import Film
@@ -20,8 +19,8 @@ from Spettacolo import Spettacolo, ordina_spettacoli_film_data, ordina_spettacol
 my_token = os.environ.get('TOKEN_HEROKU')
 my_id = os.environ.get('MY_ID_HEROKU')
 
-aiuto = ["aiuto", "/aiuto", "help", "/help", "/start"]
-programmazioneGiornaliera = ["/showperdata"]
+aiuto = ["aiuto", "help", "start"]
+programmazione_giornaliera_commands = ["showperdata","showPerData"]
 programmazioneGiornalieraCompleta = ["/showperdataall", "/showperdatacomplete", "/showperdatatutti"]
 programmazionePerFilm = ["/showperfilm"]
 aggiornamento = ["/update", "/aggiornamenti", "/aggiornamento"]
@@ -34,21 +33,20 @@ msg_benvenuto = 'Ciao, sono il bot non ufficiale del The Space di Bologna. ' \
                 '\n/aggiornamenti per sapere cosa è cambiato nell\'ultimo aggiornamento della programmazione'
 
 
-def handle(msg):
-    content_type, chat_type, chat_id = telepot.glance(msg)
-    if content_type == 'text':
-        logging.info(msg)
-        messaggio = msg.get("text").strip().lower()
-        if messaggio in aiuto:
-            bot.sendMessage(chat_id, msg_benvenuto)
-        elif messaggio in programmazioneGiornaliera:
-            bot.sendMessage(chat_id, "--PROGRAMMAZIONE PER DATA--\n\n"
-                            + emoji.emojize(get_spettacoli_per_data(), use_aliases=True)
-                            + "\n\nSono mostrati gli spettacoli dei prossimi 7 giorni, per vederli tutti digita /showPerDataAll.")
-        else:
-            logging.warning("Messaggio sconosciuto ricevuto - " + msg)
-            bot.sendMessage(chat_id, emoji.emojize("Non ho capito... :sob:", use_aliases=True))
+def start(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg_benvenuto)
 
+
+def programmazione_giornaliera(update, context):
+    msg = ("--PROGRAMMAZIONE PER DATA--\n\n"
+           + emoji.emojize(get_spettacoli_per_data(), use_aliases=True)
+           + "\n\nSono mostrati gli spettacoli dei prossimi 7 giorni, per vederli tutti digita /showPerDataAll.")
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+
+
+def sconosciuto(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text=emoji.emojize("Non ho capito... :sob:",
+                                                                                  use_aliases=True))
 
 def get_spettacoli_per_data():
     db_conn = handleDB.create_db(r"cinema.db", logging)
@@ -65,17 +63,20 @@ def send_request():
         response = requests.get(
             url="https://www.thespacecinema.it/data/filmswithshowings/3",
         )
-        print('Response HTTP Status Code: {status_code}'.format(
-            status_code=response.status_code))
+        print(('Response HTTP Status Code: {status_code}'.format(
+            status_code=response.status_code)))
         return response.text
     except requests.exceptions.RequestException:
         print('HTTP Request failed')
 
 
 logging.basicConfig(filename='bot.log', format='[%(asctime)s]%(levelname)s:%(message)s', level=logging.DEBUG)
-bot = telepot.Bot(my_token)
-bot.sendMessage(my_id, msg_benvenuto)
-MessageLoop(bot, handle).run_as_thread()
+updater = Updater(token=my_token, use_context=True)
+dispatcher = updater.dispatcher
+dispatcher.add_handler(CommandHandler(aiuto, start))
+dispatcher.add_handler(CommandHandler(programmazione_giornaliera_commands, programmazione_giornaliera))
+dispatcher.add_handler(MessageHandler(Filters.command | Filters.text, sconosciuto))
+updater.start_polling()
 
 while True:
     try:
@@ -121,21 +122,23 @@ while True:
             ordina_spettacoli_film_data(nuoviSpettacoli)
             aggiornamento = aggiornamento + "\n:white_check_mark: SPETTACOLI AGGIUNTI :white_check_mark:\n"
             for spettacolo in nuoviSpettacoli:
-                aggiornamento += handleDB.select_film(db_conn, spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
-                                    + spettacolo.ora + "\n"
+                aggiornamento += handleDB.select_film(db_conn,
+                                                      spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
+                                 + spettacolo.ora + "\n"
         if spettacoliRimossi:
             ordina_spettacoli_film_data(spettacoliRimossi)
             aggiornamento = aggiornamento + "\n:no_entry: SPETTACOLI RIMOSSI :no_entry:\n"
             for spettacolo in spettacoliRimossi:
-                aggiornamento += handleDB.select_film(db_conn, spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
+                aggiornamento += handleDB.select_film(db_conn,
+                                                      spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
                                  + spettacolo.ora + "\n"
-        if aggiornamento is not "":
+        if aggiornamento != "":
             bot.sendMessage(my_id, emoji.emojize(aggiornamento, use_aliases=True))
 
         db_conn.close()
 
     except Exception as e:
-        print("ERRORE\n"+ e.message)
+        print(("ERRORE\n" + e.message))
         logging.error(e)
         bot.sendMessage(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
         if db_conn is not None:
