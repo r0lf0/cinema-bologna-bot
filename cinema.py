@@ -8,6 +8,7 @@ from sqlite3.dbapi2 import Connection
 
 import emoji
 import requests
+from telegram import bot
 from telegram.ext import Updater, CommandHandler, Filters, MessageHandler
 
 import handleDB
@@ -77,6 +78,7 @@ dispatcher.add_handler(CommandHandler(aiuto, start))
 dispatcher.add_handler(CommandHandler(programmazione_giornaliera_commands, programmazione_giornaliera))
 dispatcher.add_handler(MessageHandler(Filters.command | Filters.text, sconosciuto))
 updater.start_polling()
+updater.bot.send_message(my_id, msg_benvenuto)
 
 while True:
     try:
@@ -133,14 +135,14 @@ while True:
                                                       spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
                                  + spettacolo.ora + "\n"
         if aggiornamento != "":
-            bot.sendMessage(my_id, emoji.emojize(aggiornamento, use_aliases=True))
+            updater.bot.send_message(my_id, emoji.emojize(aggiornamento, use_aliases=True))
 
         db_conn.close()
 
     except Exception as e:
         print(("ERRORE\n" + e.message))
         logging.error(e)
-        bot.sendMessage(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
+        updater.bot.send_message(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
         if db_conn is not None:
             db_conn.close()
 
