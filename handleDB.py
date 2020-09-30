@@ -32,8 +32,8 @@ sql_crea_tabella_spettacolo = """ CREATE TABLE IF NOT EXISTS spettacolo (
                                 ); """
 
 
-def string2datetime(input):
-    return datetime.strptime(input, "%Y-%m-%dT%H:%M:%S")
+def string2datetime(input_string):
+    return datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S")
 
 
 def create_db(db_file, logging):
@@ -66,27 +66,27 @@ sql_select_film = """   SELECT *
                         WHERE id = ? """
 
 
-def select_film(db_conn, idFilm):
+def select_film(db_conn, id_film):
     cur = db_conn.cursor()
-    cur.execute(sql_select_film, (idFilm,))
+    cur.execute(sql_select_film, (id_film,))
     film_tupla = cur.fetchone()
     if film_tupla is None:
         return None
     return Film(film_tupla)
 
 
-sql_insert_film = """   INSERT INTO film (id, titolo, data_uscita, regista, attori, trama, durata, trailer_link, locandina)
-                        VALUES (?,?,?,?,?,?,?,?,?) """
+sql_insert_film = """INSERT INTO film (id, titolo, data_uscita, regista, attori, trama, durata, trailer_link, locandina)
+                     VALUES (?,?,?,?,?,?,?,?,?) """
 
 
 def insert_film(db_conn, film, generi):
-    selected_film = select_film(db_conn, film.id)
+    selected_film = select_film(db_conn, film.id_film)
     if selected_film is not None:
         return False
     cur = db_conn.cursor()
     cur.execute(sql_insert_film, (
-        film.id, film.titolo, film.data_uscita, film.regista, film.attori, film.trama, film.durata, film.trailer_link,
-        film.locandina))
+        film.id_film, film.titolo, film.data_uscita, film.regista, film.attori, film.trama, film.durata,
+        film.trailer_link, film.locandina))
     db_conn.commit()
     for genere in generi:
         insert_genere(db_conn, genere)
@@ -109,9 +109,9 @@ sql_select_spettacolo = """ SELECT id, id_film, data_ora, sala, data, ora
                             WHERE id = ? """
 
 
-def select_spettacolo(db_conn, id):
+def select_spettacolo(db_conn, id_film):
     cur = db_conn.cursor()
-    cur.execute(sql_select_spettacolo, (id,))
+    cur.execute(sql_select_spettacolo, (id_film,))
     spettacolo_tupla = cur.fetchone()
     if spettacolo_tupla is None:
         return None
@@ -127,20 +127,24 @@ sql_consolida_spettacolo = """  UPDATE spettacolo
 
 
 def insert_spettacolo(db_conn, spettacolo):
-    selected_spettacolo = select_spettacolo(db_conn, spettacolo.id)
+    selected_spettacolo = select_spettacolo(db_conn, spettacolo.id_spettacolo)
     cur = db_conn.cursor()
     if selected_spettacolo is not None:
-        cur.execute(sql_consolida_spettacolo, (spettacolo.id,))
+        cur.execute(sql_consolida_spettacolo, (spettacolo.id_spettacolo,))
         db_conn.commit()
         return False
-    cur.execute(sql_insert_spettacolo, (spettacolo.id, spettacolo.id_film, spettacolo.data_ora, spettacolo.sala,
-                                        spettacolo.data, spettacolo.ora))
+    adesso = datetime.now()
+    if adesso > string2datetime(spettacolo.data_ora):
+        return False
+    cur.execute(sql_insert_spettacolo, (spettacolo.id_spettacolo, spettacolo.id_film, spettacolo.data_ora,
+                                        spettacolo.sala, spettacolo.data, spettacolo.ora))
     db_conn.commit()
     return True
 
 
 sql_select_spettacoli = """ SELECT id, id_film, data_ora, sala, data, ora
                             FROM spettacolo """
+
 
 def select_spettacoli(db_conn):
     cur = db_conn.cursor()
@@ -170,9 +174,9 @@ def elimina_spettacoli_passati(db_conn):
     for spettacolo_tupla in spettacoli:
         spettacolo = Spettacolo(spettacolo_tupla)
         if string2datetime(spettacolo.data_ora) < adesso:
-            spettacoli_rimossi.append(spettacolo)
-            cur.execute(sql_delete_spettacolo, (spettacolo.id,))
-    db_conn.commit()
+            cur.execute(sql_delete_spettacolo, (spettacolo.id_spettacolo,))
+            db_conn.commit()
+
     return spettacoli_rimossi
 
 
@@ -211,5 +215,3 @@ def azzera_flag_spettacoli_consolidati(db_conn):
     cur = db_conn.cursor()
     cur.execute(sql_azzera_flag_spettacoli_consolidati)
     db_conn.commit()
-
-

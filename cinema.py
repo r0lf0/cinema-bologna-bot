@@ -4,34 +4,31 @@ import json
 import logging
 import os
 import time
-from sqlite3.dbapi2 import Connection
-
+from datetime import datetime
+from datetime import timedelta
 import emoji
 import requests
-from telegram import bot
 from telegram.ext import Updater, CommandHandler, Filters, MessageHandler
 
 import handleDB
 from Film import Film
 from Genere import Genere
-from Spettacolo import Spettacolo, ordina_spettacoli_film_data, ordina_spettacoli_data, render_spettacoli_per_data
+from Spettacolo import Spettacolo, ordina_spettacoli_film_data, get_spettacoli_per_data
 
 # token that can be generated talking with BotFather on telegram
 my_token = os.environ.get('TOKEN_HEROKU')
 my_id = os.environ.get('MY_ID_HEROKU')
 
 aiuto = ["aiuto", "help", "start"]
-programmazione_giornaliera_commands = ["showperdata","showPerData"]
-programmazioneGiornalieraCompleta = ["/showperdataall", "/showperdatacomplete", "/showperdatatutti"]
-programmazionePerFilm = ["/showperfilm"]
-aggiornamento = ["/update", "/aggiornamenti", "/aggiornamento"]
+programmazione_giornaliera_commands = ["showperdata", "showPerData"]
+programmazione_giornaliera_completa_commands = ["showperdataall", "showPerDataAll"]
+programmazione_per_film = ["showperfilm"]
 
 msg_benvenuto = 'Ciao, sono il bot non ufficiale del The Space di Bologna. ' \
                 'Ecco le cose che puoi chiedermi:' \
                 '\n/aiuto per ricevere questo messaggio' \
                 '\n/showPerData per ricevere la programmazione per data' \
-                '\n/showPerFilm per ricevere la programmazione per film' \
-                '\n/aggiornamenti per sapere cosa è cambiato nell\'ultimo aggiornamento della programmazione'
+                '\n/showPerFilm per ricevere la programmazione per film'
 
 
 def start(update, context):
@@ -39,24 +36,22 @@ def start(update, context):
 
 
 def programmazione_giornaliera(update, context):
+    data_limite = datetime.now() + timedelta(days=7)
     msg = ("--PROGRAMMAZIONE PER DATA--\n\n"
-           + emoji.emojize(get_spettacoli_per_data(), use_aliases=True)
+           + emoji.emojize(get_spettacoli_per_data(logging, data_limite=data_limite), use_aliases=True)
            + "\n\nSono mostrati gli spettacoli dei prossimi 7 giorni, per vederli tutti digita /showPerDataAll.")
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+
+
+def programmazione_giornaliera_completa(update, context):
+    msg = ("--PROGRAMMAZIONE PER DATA--\n\n"
+           + emoji.emojize(get_spettacoli_per_data(logging), use_aliases=True))
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
 
 def sconosciuto(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=emoji.emojize("Non ho capito... :sob:",
                                                                                   use_aliases=True))
-
-def get_spettacoli_per_data():
-    db_conn = handleDB.create_db(r"cinema.db", logging)
-    if db_conn is None:
-        print("ERRORE - Impossibile creare connessione con il DB")
-        raise Exception("ERRORE - Impossibile creare connessione con il DB")
-    handleDB.create_tables(db_conn, logging)
-    spettacoli = handleDB.select_spettacoli(db_conn)
-    return render_spettacoli_per_data(db_conn, spettacoli)
 
 
 def send_request():
@@ -76,6 +71,8 @@ updater = Updater(token=my_token, use_context=True)
 dispatcher = updater.dispatcher
 dispatcher.add_handler(CommandHandler(aiuto, start))
 dispatcher.add_handler(CommandHandler(programmazione_giornaliera_commands, programmazione_giornaliera))
+dispatcher.add_handler(CommandHandler(programmazione_giornaliera_completa_commands,
+                                      programmazione_giornaliera_completa))
 dispatcher.add_handler(MessageHandler(Filters.command | Filters.text, sconosciuto))
 updater.start_polling()
 updater.bot.send_message(my_id, msg_benvenuto)
@@ -89,7 +86,6 @@ while True:
         handleDB.create_tables(db_conn, logging)
 
         handleDB.elimina_spettacoli_passati(db_conn)
-        handleDB.elimina_spettacoli_non_consolidati(db_conn)
         handleDB.azzera_flag_spettacoli_consolidati(db_conn)
 
         raw = send_request()
@@ -103,17 +99,18 @@ while True:
                  filmTS.get("video"), None))
             generi = []
             for genereTS in (filmTS.get("genres"))["names"]:
-                generi.append(Genere((filmDB.id, genereTS.get("name"))))
+                generi.append(Genere((filmDB.id_film, genereTS.get("name"))))
             if handleDB.insert_film(db_conn, filmDB, generi):
                 nuoviFilm.append(filmDB)
             for spettacoloTS in filmTS["showings"]:
                 for orarioTS in spettacoloTS["times"]:
-                    spettacoloDB = Spettacolo((orarioTS.get("session_id"), filmDB.id, orarioTS.get("date"),
+                    spettacoloDB = Spettacolo((orarioTS.get("session_id"), filmDB.id_film, orarioTS.get("date"),
                                                orarioTS.get("screen_number"), spettacoloTS.get("date_short"),
                                                orarioTS.get("time")))
                     if handleDB.insert_spettacolo(db_conn, spettacoloDB):
                         nuoviSpettacoli.append(spettacoloDB)
         spettacoliRimossi = handleDB.select_spettacoli_non_consolidati(db_conn)
+        handleDB.elimina_spettacoli_non_consolidati(db_conn)
 
         aggiornamento = ""
         if nuoviFilm:
@@ -140,7 +137,8 @@ while True:
         db_conn.close()
 
     except Exception as e:
-        print(("ERRORE\n" + e.message))
+        print("ERRORE\n")
+        print(e)
         logging.error(e)
         updater.bot.send_message(my_id, "\nErrore nel recupero o nell'elaborazione delle informazioni")
         if db_conn is not None:
