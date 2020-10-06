@@ -1,3 +1,5 @@
+from pytz import timezone
+
 from Film import Film
 from Spettacolo import Spettacolo
 import sqlite3
@@ -34,7 +36,7 @@ sql_crea_tabella_spettacolo = """ CREATE TABLE IF NOT EXISTS spettacolo (
 
 
 def string2datetime(input_string):
-    return datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S")
+    return datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone('Europe/Rome'))
 
 
 def create_db(db_file, logging):
@@ -162,7 +164,7 @@ def insert_spettacolo(db_conn, spettacolo):
         cur.execute(sql_consolida_spettacolo, (spettacolo.id_spettacolo,))
         db_conn.commit()
         return False
-    adesso = datetime.now()
+    adesso = datetime.now(timezone('Europe/Rome'))
     if adesso > string2datetime(spettacolo.data_ora):
         return False
     cur.execute(sql_insert_spettacolo, (spettacolo.id_spettacolo, spettacolo.id_film, spettacolo.data_ora,
@@ -192,7 +194,7 @@ sql_delete_spettacolo = """ DELETE FROM spettacolo
 
 
 def elimina_spettacoli_passati(db_conn):
-    adesso = datetime.now()
+    adesso = datetime.now(timezone('Europe/Rome'))
     cur = db_conn.cursor()
     cur.execute(sql_select_spettacoli)
     spettacoli = cur.fetchall()

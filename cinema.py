@@ -10,6 +10,7 @@ from datetime import timedelta
 import emoji
 import requests
 import telegram
+from pytz import timezone
 from telegram.ext import Updater, CommandHandler, Filters, MessageHandler
 
 import handleDB
@@ -39,7 +40,7 @@ def handler_start(update, context):
 
 
 def handler_programmazione_giornaliera(update, context):
-    data_limite = datetime.now() + timedelta(days=7)
+    data_limite = datetime.now(timezone('Europe/Rome')) + timedelta(days=7)
     msg = ("--PROGRAMMAZIONE PER DATA--\n\n"
            + emoji.emojize(get_spettacoli_per_data(logging, data_limite=data_limite), use_aliases=True)
            + "\n\nSono mostrati gli spettacoli dei prossimi 7 giorni, per vederli tutti digita /showPerDataAll.")
@@ -53,7 +54,7 @@ def handler_programmazione_giornaliera_completa(update, context):
 
 
 def handler_che_ore_sono(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+    context.bot.send_message(chat_id=update.effective_chat.id, text=datetime.now(timezone('Europe/Rome')).strftime("%m/%d/%Y, %H:%M:%S"))
 
 
 def handler_dettagli_film(update, context):
