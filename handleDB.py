@@ -13,6 +13,7 @@ sql_crea_tabella_film = """ CREATE TABLE IF NOT EXISTS film (
                                 trama varchar,
                                 durata varchar,
                                 trailer_link varchar,
+                                locandina_link varchar,
                                 locandina blob
                             ); """
 
@@ -66,8 +67,19 @@ sql_select_film = """   SELECT *
                         WHERE id = ? """
 
 
-def select_film(db_conn, id_film):
+sql_select_film_all = """   SELECT *
+                            FROM film   """
+
+
+def select_film(db_conn, id_film=None):
     cur = db_conn.cursor()
+    if id_film is None:
+        cur.execute(sql_select_film_all)
+        films = []
+        film_tuple = cur.fetchall()
+        for film_tupla in film_tuple:
+            films.append(Film(film_tupla))
+        return films
     cur.execute(sql_select_film, (id_film,))
     film_tupla = cur.fetchone()
     if film_tupla is None:
@@ -75,8 +87,9 @@ def select_film(db_conn, id_film):
     return Film(film_tupla)
 
 
-sql_insert_film = """INSERT INTO film (id, titolo, data_uscita, regista, attori, trama, durata, trailer_link, locandina)
-                     VALUES (?,?,?,?,?,?,?,?,?) """
+sql_insert_film = """INSERT INTO film 
+                     (id, titolo, data_uscita, regista, attori, trama, durata, trailer_link, locandina_link, locandina)
+                     VALUES (?,?,?,?,?,?,?,?,?,?) """
 
 
 def insert_film(db_conn, film, generi):
@@ -86,10 +99,26 @@ def insert_film(db_conn, film, generi):
     cur = db_conn.cursor()
     cur.execute(sql_insert_film, (
         film.id_film, film.titolo, film.data_uscita, film.regista, film.attori, film.trama, film.durata,
-        film.trailer_link, film.locandina))
+        film.trailer_link, film.locandina_link, film.locandina))
     db_conn.commit()
     for genere in generi:
         insert_genere(db_conn, genere)
+    return True
+
+
+sql_update_film_locandina = """ UPDATE film
+                                SET locandina = ?
+                                WHERE id = ? """
+
+
+def update_film_locandina(db_conn, film, check_esistenza=False):
+    if check_esistenza:
+        selected_film = select_film(db_conn, film.id_film)
+        if selected_film is not None:
+            return False
+    cur = db_conn.cursor()
+    cur.execute(sql_update_film_locandina, (film.locandina, film.id_film))
+    db_conn.commit()
     return True
 
 
