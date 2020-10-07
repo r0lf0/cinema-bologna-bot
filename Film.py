@@ -31,13 +31,13 @@ def render_film(film):
     return film_string
 
 
-def escape(str):
-    return str.translate(str.maketrans({"(": r"\(",
-                                        ")": r"\)",
-                                        "-": r"\-",
-                                        "]": r"\]",
-                                        "\\": r"\\",
-                                        "^": r"\^",
-                                        "$": r"\$",
-                                        "*": r"\*",
-                                        ".": r"\."}))
+def escape(input_string):
+    return input_string.translate(input_string.maketrans({"(": r"\(",
+                                                          ")": r"\)",
+                                                          "-": r"\-",
+                                                          "]": r"\]",
+                                                          "\\": r"\\",
+                                                          "^": r"\^",
+                                                          "$": r"\$",
+                                                          "*": r"\*",
+                                                          ".": r"\."}))

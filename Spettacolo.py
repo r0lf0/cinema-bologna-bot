@@ -1,6 +1,7 @@
 import functools
 from datetime import datetime
 
+import pytz
 from pytz import timezone
 
 import handleDB
@@ -65,11 +66,11 @@ def compare_spettacoli_data(a, b):
 
 
 def string2date(input_string):
-    return datetime.strptime(input_string[0:11], "%Y-%m-%dT").replace(tzinfo=timezone('Europe/Rome'))
+    return pytz.timezone("Europe/Rome").localize(datetime.strptime(input_string[0:11], "%Y-%m-%dT"))
 
 
 def string2datetime(input_string):
-    return datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone('Europe/Rome'))
+    return pytz.timezone("Europe/Rome").localize(datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S"))
 
 
 def get_spettacoli_per_data(logging, data_limite=datetime(4000, 1, 1, 0, 0)):

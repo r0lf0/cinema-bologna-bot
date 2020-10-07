@@ -54,7 +54,7 @@ def handler_programmazione_giornaliera_completa(update, context):
 
 
 def handler_che_ore_sono(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=datetime.now(timezone('Europe/Rome')).strftime("%m/%d/%Y, %H:%M:%S"))
+    context.bot.send_message(chat_id=update.effective_chat.id, text=datetime.now(timezone('Europe/Rome')).strftime("%d/%m/%Y, %H:%M:%S"))
 
 
 def handler_dettagli_film(update, context):

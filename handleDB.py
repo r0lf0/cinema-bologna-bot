@@ -1,3 +1,4 @@
+import pytz
 from pytz import timezone
 
 from Film import Film
@@ -36,7 +37,7 @@ sql_crea_tabella_spettacolo = """ CREATE TABLE IF NOT EXISTS spettacolo (
 
 
 def string2datetime(input_string):
-    return datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone('Europe/Rome'))
+    return pytz.timezone("Europe/Rome").localize(datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S"))
 
 
 def create_db(db_file, logging):
