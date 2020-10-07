@@ -81,13 +81,15 @@ def handler_dettagli_film(update, context):
                                                                              + lista_films_match))
         else:
             film = film_match[0]
+            generi = handleDB.select_generi(db_conn_local, film.id_film)
             context.bot.send_photo(chat_id=update.effective_chat.id, photo=film.locandina_link)
             context.bot.send_message(chat_id=update.effective_chat.id,
-                                     text=render_film(film), parse_mode=telegram.ParseMode.MARKDOWN_V2)
+                                     text=render_film(film, generi), parse_mode=telegram.ParseMode.MARKDOWN_V2)
 
     else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Non te la so ancora dare la lista dei film in"
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Non te la so ancora dare la lista dei film in "
                                                                         "programmazione, abbi pazienza... 👍")
+    db_conn_local.close()
 
 
 def sconosciuto(update, context):

@@ -136,6 +136,23 @@ def insert_genere(db_conn, genere):
     return True
 
 
+sql_select_generi = """ SELECT genere
+                        FROM genere
+                        WHERE id_film = ? """
+
+
+def select_generi(db_conn, id_film):
+    cur = db_conn.cursor()
+    cur.execute(sql_select_generi, (id_film,))
+    generi_tuple = cur.fetchall()
+    if generi_tuple is None:
+        return None
+    generi = []
+    for genere in generi_tuple:
+        generi.append(genere[0])
+    return generi
+
+
 sql_select_spettacolo = """ SELECT id, id_film, data_ora, sala, data, ora
                             FROM spettacolo
                             WHERE id = ? """

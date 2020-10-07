@@ -1,3 +1,6 @@
+from Genere import render_generi
+
+
 class Film:
     def __init__(self, xxx_todo_changeme):
         (id_film, titolo, data_uscita, regista, attori, trama, durata, trailer_link, locandina_link,
@@ -14,8 +17,12 @@ class Film:
         self.locandina = locandina
 
 
-def render_film(film):
+def render_film(film, generi=None):
     film_string = "*" + escape(film.titolo) + "*\n"
+    if generi is not None:
+        generi_string = render_generi(generi)
+        if generi_string != "":
+            film_string += escape(generi_string) + "\n"
     if film.data_uscita is not None:
         film_string += "Data di uscita: " + escape(film.data_uscita[0:10]) + "\n"
     if film.regista is not None:
