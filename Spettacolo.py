@@ -2,14 +2,11 @@ import functools
 from datetime import datetime
 
 import pytz
-from pytz import timezone
-
 import handleDB
 
 
 class Spettacolo:
-    def __init__(self, xxx_todo_changeme):
-        (id_spettacolo, id_film, data_ora, sala, data, ora) = xxx_todo_changeme
+    def __init__(self, id_spettacolo, id_film, data_ora, sala, data, ora):
         self.id_spettacolo = id_spettacolo
         self.id_film = id_film
         self.data_ora = data_ora
@@ -37,11 +34,9 @@ def ordina_spettacoli_data(spettacoli):
 
 
 def compare_spettacoli_giorno_film(a, b):
-    a_giorno = string2date(a.data_ora)
-    b_giorno = string2date(b.data_ora)
-    if a_giorno.date() < b_giorno.date():
+    if a.data_ora.date() < b.data_ora.date():
         return -1
-    elif a_giorno.date() > b_giorno.date():
+    elif a.data_ora.date() > b.data_ora.date():
         return 1
     else:
         return compare_spettacoli_film_data(a, b)
@@ -65,20 +60,11 @@ def compare_spettacoli_data(a, b):
         return 1
 
 
-def string2date(input_string):
-    return pytz.timezone("Europe/Rome").localize(datetime.strptime(input_string[0:11], "%Y-%m-%dT"))
-
-
-def string2datetime(input_string):
-    return pytz.timezone("Europe/Rome").localize(datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S"))
-
-
-def get_spettacoli_per_data(logging, data_limite=datetime(4000, 1, 1, 0, 0)):
-    db_conn = handleDB.create_db(r"cinema.db", logging)
+def get_spettacoli_per_data(logging, data_limite=pytz.timezone("Europe/Rome").localize(datetime(4000, 1, 1, 0, 0))):
+    db_conn = handleDB.connect_to_db(logging)
     if db_conn is None:
         print("ERRORE - Impossibile creare connessione con il DB")
         raise Exception("ERRORE - Impossibile creare connessione con il DB")
-    handleDB.create_tables(db_conn, logging)
     spettacoli = handleDB.select_spettacoli(db_conn)
     if not spettacoli:
         return ""
@@ -88,7 +74,7 @@ def get_spettacoli_per_data(logging, data_limite=datetime(4000, 1, 1, 0, 0)):
     id_film_precedente = ""
     for spettacolo in spettacoli:
         if data_precedente != spettacolo.data:
-            if string2datetime(spettacolo.data_ora) > data_limite:
+            if pytz.timezone("Europe/Rome").localize(spettacolo.data_ora) > data_limite:
                 break
             data_precedente = spettacolo.data
             id_film_precedente = ""

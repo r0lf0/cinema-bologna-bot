@@ -5,8 +5,7 @@ import logging
 import os
 import re
 import time
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 import emoji
 import requests
 import telegram
@@ -25,14 +24,16 @@ my_id = os.environ.get('MY_ID_HEROKU')
 commands_aiuto = ["aiuto", "help", "start"]
 commands_programmazione_giornaliera = ["showperdata", "showPerData"]
 commands_programmazione_giornaliera_completa = ["showperdataall", "showPerDataAll"]
-commands_dettagli_film = ["film", "flims"]
+commands_dettagli_film = ["film", "films"]
 commands_che_ore_sono = ["ora"]
 
 msg_benvenuto = 'Ciao, sono il bot non ufficiale del The Space di Bologna. ' \
                 'Ecco le cose che puoi chiedermi:' \
-                '\n/aiuto per ricevere questo messaggio' \
+                '\n/aiuto per rileggere questo messaggio' \
                 '\n/showPerData per ricevere la programmazione per data' \
-                '\n/showPerFilm per ricevere la programmazione per film'
+                '\n/showPerFilm per ricevere la programmazione per film' \
+                '\n/film per la lista dei film in programmazione' \
+                '\n/film seguito da parte del titolo di un film per conoscerne i dettagli'
 
 
 def handler_start(update, context):
@@ -54,7 +55,8 @@ def handler_programmazione_giornaliera_completa(update, context):
 
 
 def handler_che_ore_sono(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=datetime.now(timezone('Europe/Rome')).strftime("%d/%m/%Y, %H:%M:%S"))
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text=datetime.now(timezone('Europe/Rome')).strftime("%d/%m/%Y, %H:%M:%S"))
 
 
 def handler_dettagli_film(update, context):
@@ -63,7 +65,7 @@ def handler_dettagli_film(update, context):
         for parola in context.args:
             regex += parola + '.*'
         regex = regex[:-2]
-        db_conn_local = handleDB.create_db(r"cinema.db", logging)
+        db_conn_local = handleDB.connect_to_db(logging)
         films = handleDB.select_film(db_conn_local)
         film_match = []
         for film in films:
@@ -85,11 +87,11 @@ def handler_dettagli_film(update, context):
             context.bot.send_photo(chat_id=update.effective_chat.id, photo=film.locandina_link)
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text=render_film(film, generi), parse_mode=telegram.ParseMode.MARKDOWN_V2)
+        db_conn_local.close()
 
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text="Non te la so ancora dare la lista dei film in "
                                                                         "programmazione, abbi pazienza... 👍")
-    db_conn_local.close()
 
 
 def sconosciuto(update, context):
@@ -131,15 +133,23 @@ dispatcher.add_handler(CommandHandler(commands_dettagli_film, handler_dettagli_f
 dispatcher.add_handler(CommandHandler(commands_che_ore_sono, handler_che_ore_sono))
 dispatcher.add_handler(MessageHandler(Filters.command | Filters.text, sconosciuto))
 updater.start_polling()
+
+db_conn = None
+while db_conn is None:
+    db_conn = handleDB.connect_to_db(logging)
+    if db_conn is None:
+        updater.bot.send_message(my_id, "\nErrore nella prima connessione al DB")
+        time.sleep(60)
+handleDB.create_tables(db_conn, logging)
+db_conn.close()
 updater.bot.send_message(my_id, msg_benvenuto)
 
 while True:
     try:
-        db_conn = handleDB.create_db(r"cinema.db", logging)
+        db_conn = handleDB.connect_to_db(logging)
         if db_conn is None:
             print("ERRORE - Impossibile creare connessione con il DB")
             raise Exception("ERRORE - Impossibile creare connessione con il DB")
-        handleDB.create_tables(db_conn, logging)
 
         handleDB.elimina_spettacoli_passati(db_conn)
         handleDB.azzera_flag_spettacoli_consolidati(db_conn)
@@ -150,21 +160,21 @@ while True:
         nuoviSpettacoli = []
         for filmTS in jsonData["films"]:
             filmDB = Film(
-                (filmTS.get("id"), filmTS.get("title"), filmTS.get("ReleaseDate"), filmTS.get("info_director"),
-                 filmTS.get("info_cast"), filmTS.get("synopsis_short"), filmTS.get("info_runningtime"),
-                 filmTS.get("video"),filmTS.get("image_poster"), None))
+                filmTS.get("id"), filmTS.get("title"), filmTS.get("ReleaseDate"), filmTS.get("info_director"),
+                filmTS.get("info_cast"), filmTS.get("synopsis_short"), filmTS.get("info_runningtime"),
+                filmTS.get("video"), filmTS.get("image_poster"), None)
             generi = []
             for genereTS in (filmTS.get("genres"))["names"]:
-                generi.append(Genere((filmDB.id_film, genereTS.get("name"))))
+                generi.append(Genere(filmDB.id_film, genereTS.get("name")))
             if handleDB.insert_film(db_conn, filmDB, generi):
                 nuoviFilm.append(filmDB)
                 filmDB.locandina = get_locandina(filmTS.get("image_poster"))
                 handleDB.update_film_locandina(db_conn, filmDB)
             for spettacoloTS in filmTS["showings"]:
                 for orarioTS in spettacoloTS["times"]:
-                    spettacoloDB = Spettacolo((orarioTS.get("session_id"), filmDB.id_film, orarioTS.get("date"),
-                                               orarioTS.get("screen_number"), spettacoloTS.get("date_short"),
-                                               orarioTS.get("time")))
+                    spettacoloDB = Spettacolo(orarioTS.get("session_id"), filmDB.id_film, orarioTS.get("date"),
+                                              orarioTS.get("screen_number"), spettacoloTS.get("date_short"),
+                                              orarioTS.get("time"))
                     if handleDB.insert_spettacolo(db_conn, spettacoloDB):
                         nuoviSpettacoli.append(spettacoloDB)
         spettacoliRimossi = handleDB.select_spettacoli_non_consolidati(db_conn)
