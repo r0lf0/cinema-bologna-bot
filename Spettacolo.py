@@ -1,8 +1,10 @@
 import functools
 from datetime import datetime
 
+import emoji
 import pytz
 import handleDB
+from Utils import escape
 
 
 class Spettacolo:
@@ -85,3 +87,15 @@ def get_spettacoli_per_data(logging, data_limite=pytz.timezone("Europe/Rome").lo
         out += "- " + spettacolo.ora + " sala " + str(spettacolo.sala) + "\n"
     db_conn.close()
     return out
+
+
+def render_spettacoli(spettacoli):
+    message = ""
+    if spettacoli:
+        for spettacolo in spettacoli:
+            data_local = None
+            if spettacolo.data_ora != data_local:
+                data_local = spettacolo.data_ora
+                message += ":calendar:Spettacoli di " + spettacolo.data + "\n"
+            message += spettacolo.ora + " - sala " + str(spettacolo.sala) + "\n"
+    return emoji.emojize(escape(message), use_aliases=True)

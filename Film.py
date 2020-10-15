@@ -1,4 +1,7 @@
+import functools
+
 from Genere import render_generi
+from Utils import escape
 
 
 class Film:
@@ -14,6 +17,30 @@ class Film:
         self.trailer_link = trailer_link
         self.locandina_link = locandina_link
         self.locandina = locandina
+
+
+def compare_film_per_titolo(a, b):
+    if a.titolo < b.titolo:
+        return -1
+    elif a.titolo > b.titolo:
+        return 1
+    else:
+        return 0
+
+
+def compare_film_per_data_di_uscita(a, b):
+    if a.data_uscita.date() < b.data_uscita.date():
+        return -1
+    elif a.data_uscita.date() > b.data_uscita.date():
+        return 1
+    else:
+        return compare_film_per_titolo(a, b)
+
+
+def ordina_per_data_di_uscita(films):
+    if films is []:
+        return []
+    films.sort(key=functools.cmp_to_key(compare_film_per_data_di_uscita))
 
 
 def render_film(film, generi=None):
@@ -35,15 +62,3 @@ def render_film(film, generi=None):
     if film.trailer_link:
         film_string += "[Visualizza trailer](" + film.trailer_link + ")"
     return film_string
-
-
-def escape(input_string):
-    return input_string.translate(input_string.maketrans({"(": r"\(",
-                                                          ")": r"\)",
-                                                          "-": r"\-",
-                                                          "]": r"\]",
-                                                          "\\": r"\\",
-                                                          "^": r"\^",
-                                                          "$": r"\$",
-                                                          "*": r"\*",
-                                                          ".": r"\."}))

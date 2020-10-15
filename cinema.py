@@ -7,15 +7,16 @@ import re
 import time
 from datetime import datetime, timedelta
 import emoji
+import pytz
 import requests
 import telegram
 from pytz import timezone
 from telegram.ext import Updater, CommandHandler, Filters, MessageHandler
 
 import handleDB
-from Film import Film, render_film
+from Film import Film, render_film, ordina_per_data_di_uscita
 from Genere import Genere
-from Spettacolo import Spettacolo, ordina_spettacoli_film_data, get_spettacoli_per_data
+from Spettacolo import Spettacolo, ordina_spettacoli_film_data, get_spettacoli_per_data, render_spettacoli
 
 # token that can be generated talking with BotFather on telegram
 my_token = os.environ.get('TOKEN_HEROKU')
@@ -31,7 +32,6 @@ msg_benvenuto = 'Ciao, sono il bot non ufficiale del The Space di Bologna. ' \
                 'Ecco le cose che puoi chiedermi:' \
                 '\n/aiuto per rileggere questo messaggio' \
                 '\n/showPerData per ricevere la programmazione per data' \
-                '\n/showPerFilm per ricevere la programmazione per film' \
                 '\n/film per la lista dei film in programmazione' \
                 '\n/film seguito da parte del titolo di un film per conoscerne i dettagli'
 
@@ -60,13 +60,13 @@ def handler_che_ore_sono(update, context):
 
 
 def handler_dettagli_film(update, context):
+    db_conn_local = handleDB.connect_to_db(logging)
+    films = handleDB.select_film(db_conn_local)
     if context.args:
         regex = ""
         for parola in context.args:
             regex += parola + '.*'
         regex = regex[:-2]
-        db_conn_local = handleDB.connect_to_db(logging)
-        films = handleDB.select_film(db_conn_local)
         film_match = []
         for film in films:
             if re.search(regex, film.titolo, re.IGNORECASE):
@@ -84,14 +84,42 @@ def handler_dettagli_film(update, context):
         else:
             film = film_match[0]
             generi = handleDB.select_generi(db_conn_local, film.id_film)
+            spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
             context.bot.send_photo(chat_id=update.effective_chat.id, photo=film.locandina_link)
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text=render_film(film, generi), parse_mode=telegram.ParseMode.MARKDOWN_V2)
-        db_conn_local.close()
-
+            if spettacoli:
+                messaggio = "*Programmazione*\n" + render_spettacoli(spettacoli)
+                context.bot.send_message(chat_id=update.effective_chat.id,
+                                         text=messaggio, parse_mode=telegram.ParseMode.MARKDOWN_V2)
     else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Non te la so ancora dare la lista dei film in "
-                                                                        "programmazione, abbi pazienza... 👍")
+        adesso = datetime.now(timezone('Europe/Rome'))
+        film_in_programmazione = []
+        film_prossimamente = []
+        for film in films:
+            spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
+            if spettacoli:
+                film_in_programmazione.append(film)
+            elif adesso < pytz.timezone("Europe/Rome").localize(film.data_uscita):
+                film_prossimamente.append(film)
+        message = ""
+        if film_in_programmazione:
+            message += ":film_frames:Film in programmazione️:film_frames:\n"
+            for film in film_in_programmazione:
+                message += film.titolo + "\n"
+        if film_prossimamente:
+            ordina_per_data_di_uscita(film_prossimamente)
+            if message:
+                message += "\n"
+            data_local = None
+            for film in film_prossimamente:
+                if film.data_uscita != data_local:
+                    data_local = film.data_uscita
+                    message += ":calendar:In uscita il " + film.data_uscita.strftime("%d/%m/%Y") + "\n"
+                message += "- " + film.titolo + "\n"
+
+        context.bot.send_message(chat_id=update.effective_chat.id, text=emoji.emojize(message, use_aliases=True))
+    db_conn_local.close()
 
 
 def sconosciuto(update, context):

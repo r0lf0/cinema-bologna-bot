@@ -1,6 +1,5 @@
 import os
 
-import pytz
 from pytz import timezone
 
 from Film import Film
@@ -8,6 +7,7 @@ from Spettacolo import Spettacolo
 from datetime import datetime
 import psycopg2
 
+from Utils import string2datetime
 
 sql_crea_tabella_film = """ CREATE TABLE IF NOT EXISTS film (
                                 id integer NOT NULL,
@@ -40,13 +40,6 @@ sql_crea_tabella_spettacolo = """ CREATE TABLE IF NOT EXISTS spettacolo (
                                     PRIMARY KEY (id),
                                     FOREIGN KEY (id_film) REFERENCES film(id)
                                 ); """
-
-
-def string2datetime(input_string):
-    if isinstance(input_string, str):
-        return pytz.timezone("Europe/Rome").localize(datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S"))
-    else:
-        return pytz.timezone("Europe/Rome").localize(input_string)
 
 
 def connect_to_db(logging):
@@ -212,13 +205,20 @@ def insert_spettacolo(db_conn, spettacolo):
     return True
 
 
-sql_select_spettacoli = """ SELECT id, id_film, data_ora, sala, data, ora
+sql_select_spettacoli_all = """ SELECT id, id_film, data_ora, sala, data, ora
                             FROM spettacolo """
 
+sql_select_spettacoli = """ SELECT id, id_film, data_ora, sala, data, ora
+                            FROM spettacolo 
+                            WHERE id_film = %s """
 
-def select_spettacoli(db_conn):
+
+def select_spettacoli(db_conn, id_film=None):
     cur = db_conn.cursor()
-    cur.execute(sql_select_spettacoli)
+    if id_film:
+        cur.execute(sql_select_spettacoli, (id_film, ))
+    else:
+        cur.execute(sql_select_spettacoli_all)
     spettacoli_tupla = cur.fetchall()
     db_conn.commit()
     cur.close()
@@ -237,7 +237,7 @@ sql_delete_spettacolo = """ DELETE FROM spettacolo
 def elimina_spettacoli_passati(db_conn):
     adesso = datetime.now(timezone('Europe/Rome'))
     cur = db_conn.cursor()
-    cur.execute(sql_select_spettacoli)
+    cur.execute(sql_select_spettacoli_all)
     spettacoli = cur.fetchall()
     if spettacoli is None:
         db_conn.commit()
