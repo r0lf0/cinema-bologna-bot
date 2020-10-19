@@ -92,10 +92,10 @@ def get_spettacoli_per_data(logging, data_limite=pytz.timezone("Europe/Rome").lo
 def render_spettacoli(spettacoli):
     message = ""
     if spettacoli:
+        data_local = None
         for spettacolo in spettacoli:
-            data_local = None
-            if spettacolo.data_ora != data_local:
-                data_local = spettacolo.data_ora
+            if spettacolo.data_ora.date() != data_local:
+                data_local = spettacolo.data_ora.date()
                 message += ":calendar:Spettacoli di " + spettacolo.data + "\n"
             message += spettacolo.ora + " - sala " + str(spettacolo.sala) + "\n"
     return emoji.emojize(escape(message), use_aliases=True)
