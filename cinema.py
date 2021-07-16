@@ -19,6 +19,8 @@ from Genere import Genere
 from Spettacolo import Spettacolo, ordina_spettacoli_film_data, get_spettacoli_per_data, render_spettacoli
 
 # token that can be generated talking with BotFather on telegram
+from utils import TelegramUtils
+
 my_token = os.environ.get('TOKEN_HEROKU')
 my_id = os.environ.get('MY_ID_HEROKU')
 
@@ -37,7 +39,7 @@ msg_benvenuto = 'Ciao, sono il bot non ufficiale del The Space di Bologna. ' \
 
 
 def handler_start(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=msg_benvenuto)
+    TelegramUtils.send_message(context.bot, update.effective_chat.id, msg_benvenuto)
 
 
 def handler_programmazione_giornaliera(update, context):
@@ -45,18 +47,18 @@ def handler_programmazione_giornaliera(update, context):
     msg = ("--PROGRAMMAZIONE PER DATA--\n\n"
            + emoji.emojize(get_spettacoli_per_data(logging, data_limite=data_limite), use_aliases=True)
            + "\n\nSono mostrati gli spettacoli dei prossimi 7 giorni, per vederli tutti digita /showPerDataAll.")
-    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+    TelegramUtils.send_message(context.bot, update.effective_chat.id, msg)
 
 
 def handler_programmazione_giornaliera_completa(update, context):
     msg = ("--PROGRAMMAZIONE PER DATA--\n\n"
            + emoji.emojize(get_spettacoli_per_data(logging), use_aliases=True))
-    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+    TelegramUtils.send_message(context.bot, update.effective_chat.id, msg)
 
 
 def handler_che_ore_sono(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=datetime.now(timezone('Europe/Rome')).strftime("%d/%m/%Y, %H:%M:%S"))
+    TelegramUtils.send_message(context.bot, update.effective_chat.id,
+                               datetime.now(timezone('Europe/Rome')).strftime("%d/%m/%Y, %H:%M:%S"))
 
 
 def handler_dettagli_film(update, context):
@@ -73,14 +75,16 @@ def handler_dettagli_film(update, context):
                 film_match.append(film)
 
         if not film_match:
-            context.bot.send_message(chat_id=update.effective_chat.id, text=emoji.emojize("Nessun film trovato :sob:",
-                                                                                          use_aliases=True))
+            TelegramUtils.send_message(context.bot, update.effective_chat.id,
+                                       emoji.emojize("Nessun film trovato :sob:", use_aliases=True))
+
         elif len(film_match) > 1:
             lista_films_match = ""
             for film in film_match:
                 lista_films_match += film.titolo + "\n"
-            context.bot.send_message(chat_id=update.effective_chat.id, text=("Sii più specifico, quale tra questi?\n"
-                                                                             + lista_films_match))
+            TelegramUtils.send_message(context.bot, update.effective_chat.id,
+                                       ("Sii più specifico, quale tra questi?\n" + lista_films_match))
+
         else:
             film = film_match[0]
             generi = handleDB.select_generi(db_conn_local, film.id_film)
@@ -228,7 +232,7 @@ while True:
                                                       spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
                                  + spettacolo.ora + "\n"
         if aggiornamento != "":
-            updater.bot.send_message(my_id, emoji.emojize(aggiornamento, use_aliases=True))
+            TelegramUtils.send_message(updater.bot, my_id, emoji.emojize(aggiornamento, use_aliases=True))
 
         db_conn.close()
 

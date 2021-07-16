@@ -4,7 +4,7 @@ from datetime import datetime
 import emoji
 import pytz
 import handleDB
-from Utils import escape
+from utils.Utils import escape
 
 
 class Spettacolo:

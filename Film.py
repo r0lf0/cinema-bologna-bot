@@ -1,7 +1,7 @@
 import functools
 
 from Genere import render_generi
-from Utils import escape
+from utils.Utils import escape
 
 
 class Film:

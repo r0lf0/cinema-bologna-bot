@@ -7,7 +7,7 @@ from Spettacolo import Spettacolo
 from datetime import datetime
 import psycopg2
 
-from Utils import string2datetime
+from utils.Utils import string2datetime
 
 sql_crea_tabella_film = """ CREATE TABLE IF NOT EXISTS film (
                                 id integer NOT NULL,
