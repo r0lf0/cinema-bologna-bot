@@ -11,7 +11,7 @@ import pytz
 import requests
 import telegram
 from pytz import timezone
-from telegram.ext import Updater, CommandHandler, Filters, MessageHandler
+from telegram.ext import Updater, CommandHandler, Filters, MessageHandler, RegexHandler
 
 import handleDB
 from Film import Film, render_film, ordina_per_data_di_uscita
@@ -87,16 +87,8 @@ def handler_dettagli_film(update, context):
                                            ("Sii più specifico, quale tra questi?\n" + lista_films_match))
 
             else:
-                film = film_match[0]
-                generi = handleDB.select_generi(db_conn_local, film.id_film)
-                spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
-                context.bot.send_photo(chat_id=update.effective_chat.id, photo=film.locandina_link)
-                context.bot.send_message(chat_id=update.effective_chat.id,
-                                         text=render_film(film, generi), parse_mode=telegram.ParseMode.MARKDOWN_V2)
-                if spettacoli:
-                    messaggio = "*Programmazione*\n" + render_spettacoli(spettacoli)
-                    context.bot.send_message(chat_id=update.effective_chat.id,
-                                             text=messaggio, parse_mode=telegram.ParseMode.MARKDOWN_V2)
+                send_message_film(update, context, db_conn_local, film_match[0])
+
         else:
             adesso = datetime.now(timezone('Europe/Rome'))
             film_in_programmazione = []
@@ -111,7 +103,7 @@ def handler_dettagli_film(update, context):
             if film_in_programmazione:
                 message += ":film_frames:Film in programmazione️:film_frames:\n"
                 for film in film_in_programmazione:
-                    message += film.titolo + "\n"
+                    message += "/f_" + str(film.id_film) + " " + film.titolo + "\n"
             if film_prossimamente:
                 ordina_per_data_di_uscita(film_prossimamente)
                 if message:
@@ -121,7 +113,7 @@ def handler_dettagli_film(update, context):
                     if film.data_uscita != data_local:
                         data_local = film.data_uscita
                         message += ":calendar:In uscita il " + film.data_uscita.strftime("%d/%m/%Y") + "\n"
-                    message += "- " + film.titolo + "\n"
+                    message += "/f_" + str(film.id_film) + " " + film.titolo + "\n"
 
             context.bot.send_message(chat_id=update.effective_chat.id, text=emoji.emojize(message, use_aliases=True))
         db_conn_local.close()
@@ -132,6 +124,38 @@ def handler_dettagli_film(update, context):
         updater.bot.send_message(my_id, "\nErrore!")
         if db_conn is not None:
             db_conn.close()
+
+
+def handler_dettagli_film_id(update, context):
+    try:
+        db_conn_local = handleDB.connect_to_db(logging)
+        film = handleDB.select_film(db_conn_local, update.message.text.replace('/f_', ''))
+        if film:
+            send_message_film(update, context, db_conn_local, film)
+        else:
+            context.bot.send_message(chat_id=update.effective_chat.id,
+                                     text=emoji.emojize("Non ho trovato il film richiesto :sob:", use_aliases=True))
+        db_conn_local.close()
+
+    except Exception as errore:
+        print("ERRORE\n")
+        print(errore)
+        logging.error(errore)
+        updater.bot.send_message(my_id, "\nErrore!")
+        if db_conn_local is not None:
+            db_conn_local.close()
+
+
+def send_message_film (update, context, db_conn_local, film):
+    generi = handleDB.select_generi(db_conn_local, film.id_film)
+    spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
+    context.bot.send_photo(chat_id=update.effective_chat.id, photo=film.locandina_link)
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text=render_film(film, generi), parse_mode=telegram.ParseMode.MARKDOWN_V2)
+    if spettacoli:
+        messaggio = "*Programmazione*\n" + render_spettacoli(spettacoli)
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text=messaggio, parse_mode=telegram.ParseMode.MARKDOWN_V2)
 
 
 def sconosciuto(update, context):
@@ -170,6 +194,7 @@ dispatcher.add_handler(CommandHandler(commands_programmazione_giornaliera, handl
 dispatcher.add_handler(CommandHandler(commands_programmazione_giornaliera_completa,
                                       handler_programmazione_giornaliera_completa))
 dispatcher.add_handler(CommandHandler(commands_dettagli_film, handler_dettagli_film))
+dispatcher.add_handler(MessageHandler(Filters.regex(r'\/f_[0-9]+'), handler_dettagli_film_id))
 dispatcher.add_handler(CommandHandler(commands_che_ore_sono, handler_che_ore_sono))
 dispatcher.add_handler(MessageHandler(Filters.command | Filters.text, sconosciuto))
 updater.start_polling()
