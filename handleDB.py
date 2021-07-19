@@ -69,6 +69,26 @@ def create_tables(db_conn, logging):
     create_table(db_conn, sql_crea_tabella_spettacolo, logging)
 
 
+sql_delete_all = " DELETE FROM %s "
+
+
+def wipe_table(db_conn, table_name, logging):
+    try:
+        cur = db_conn.cursor()
+        cur.execute("DELETE FROM " + table_name)
+        db_conn.commit()
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+        logging.error(error)
+
+
+def wipe_tables(db_conn, logging):
+    wipe_table(db_conn, "genere", logging)
+    wipe_table(db_conn, "spettacolo", logging)
+    wipe_table(db_conn, "film", logging)
+
+
 sql_select_film = """   SELECT *
                         FROM film
                         WHERE id = %s """

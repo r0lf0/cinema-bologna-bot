@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as tm
 import emoji
 import pytz
 import requests
@@ -174,6 +174,10 @@ dispatcher.add_handler(CommandHandler(commands_che_ore_sono, handler_che_ore_son
 dispatcher.add_handler(MessageHandler(Filters.command | Filters.text, sconosciuto))
 updater.start_polling()
 
+reset_giornaliero_avvenuto = False
+DUE = tm(2, 0, 0)
+TRE = tm(3, 0)
+
 db_conn = None
 while db_conn is None:
     db_conn = handleDB.connect_to_db(logging)
@@ -186,10 +190,23 @@ updater.bot.send_message(my_id, msg_benvenuto)
 
 while True:
     try:
+        reset_giornaliero_in_corso = False
         db_conn = handleDB.connect_to_db(logging)
         if db_conn is None:
             print("ERRORE - Impossibile creare connessione con il DB")
             raise Exception("ERRORE - Impossibile creare connessione con il DB")
+
+        ora_attuale = datetime.now(timezone('Europe/Rome')).time()
+
+        # Azzero il flag che tiene traccia del reset giornaliero del DB
+        if ora_attuale < DUE:
+            reset_giornaliero_avvenuto = False
+
+        # Verifico se devo eseguire il reset giornaliero
+        if not reset_giornaliero_avvenuto and TRE < ora_attuale:
+            reset_giornaliero_avvenuto = True
+            reset_giornaliero_in_corso = True
+            handleDB.wipe_tables(db_conn, logging)
 
         handleDB.elimina_spettacoli_passati(db_conn)
         handleDB.azzera_flag_spettacoli_consolidati(db_conn)
@@ -220,28 +237,32 @@ while True:
         spettacoliRimossi = handleDB.select_spettacoli_non_consolidati(db_conn)
         handleDB.elimina_spettacoli_non_consolidati(db_conn)
 
-        aggiornamento = ""
-        if nuoviFilm:
-            aggiornamento = aggiornamento + "\n:clapper: FILM AGGIUNTI :clapper:\n"
-            for film in nuoviFilm:
-                aggiornamento += film.titolo + "\n"
-        if nuoviSpettacoli:
-            ordina_spettacoli_film_data(nuoviSpettacoli)
-            aggiornamento = aggiornamento + "\n:movie_camera: SPETTACOLI AGGIUNTI :movie_camera:\n"
-            for spettacolo in nuoviSpettacoli:
-                aggiornamento += handleDB.select_film(db_conn,
-                                                      spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
-                                 + spettacolo.ora + "\n"
-        if spettacoliRimossi:
-            ordina_spettacoli_film_data(spettacoliRimossi)
-            aggiornamento = aggiornamento + "\n:no_entry: SPETTACOLI RIMOSSI :no_entry:\n"
-            for spettacolo in spettacoliRimossi:
-                aggiornamento += handleDB.select_film(db_conn,
-                                                      spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
-                                 + spettacolo.ora + "\n"
-        if aggiornamento != "":
-            TelegramUtils.send_message(updater.bot, my_id, emoji.emojize(aggiornamento, use_aliases=True))
+        if not reset_giornaliero_in_corso:
+            aggiornamento = ""
+            if nuoviFilm:
+                aggiornamento = aggiornamento + "\n:clapper: FILM AGGIUNTI :clapper:\n"
+                for film in nuoviFilm:
+                    aggiornamento += film.titolo + "\n"
+            if nuoviSpettacoli:
+                ordina_spettacoli_film_data(nuoviSpettacoli)
+                aggiornamento = aggiornamento + "\n:movie_camera: SPETTACOLI AGGIUNTI :movie_camera:\n"
+                for spettacolo in nuoviSpettacoli:
+                    aggiornamento += handleDB.select_film(db_conn,
+                                                          spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
+                                     + spettacolo.ora + "\n"
+            if spettacoliRimossi:
+                ordina_spettacoli_film_data(spettacoliRimossi)
+                aggiornamento = aggiornamento + "\n:no_entry: SPETTACOLI RIMOSSI :no_entry:\n"
+                for spettacolo in spettacoliRimossi:
+                    aggiornamento += handleDB.select_film(db_conn,
+                                                          spettacolo.id_film).titolo + " - " + spettacolo.data + " " \
+                                     + spettacolo.ora + "\n"
+            if aggiornamento != "":
+                TelegramUtils.send_message(updater.bot, my_id, emoji.emojize(aggiornamento, use_aliases=True))
+        else:
+            TelegramUtils.send_message(updater.bot, my_id, "Reset giornaliero avvenuto!")
 
+        reset_giornaliero_in_corso = False
         db_conn.close()
 
     except Exception as e:
