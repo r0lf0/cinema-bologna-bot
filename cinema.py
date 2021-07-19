@@ -62,68 +62,76 @@ def handler_che_ore_sono(update, context):
 
 
 def handler_dettagli_film(update, context):
-    db_conn_local = handleDB.connect_to_db(logging)
-    films = handleDB.select_film(db_conn_local)
-    if context.args:
-        regex = ""
-        for parola in context.args:
-            regex += parola + '.*'
-        regex = regex[:-2]
-        film_match = []
-        for film in films:
-            if re.search(regex, film.titolo, re.IGNORECASE):
-                film_match.append(film)
+    try:
+        db_conn_local = handleDB.connect_to_db(logging)
+        films = handleDB.select_film(db_conn_local)
+        if context.args:
+            regex = ""
+            for parola in context.args:
+                regex += parola + '.*'
+            regex = regex[:-2]
+            film_match = []
+            for film in films:
+                if re.search(regex, film.titolo, re.IGNORECASE):
+                    film_match.append(film)
 
-        if not film_match:
-            TelegramUtils.send_message(context.bot, update.effective_chat.id,
-                                       emoji.emojize("Nessun film trovato :sob:", use_aliases=True))
+            if not film_match:
+                TelegramUtils.send_message(context.bot, update.effective_chat.id,
+                                           emoji.emojize("Nessun film trovato :sob:", use_aliases=True))
 
-        elif len(film_match) > 1:
-            lista_films_match = ""
-            for film in film_match:
-                lista_films_match += film.titolo + "\n"
-            TelegramUtils.send_message(context.bot, update.effective_chat.id,
-                                       ("Sii più specifico, quale tra questi?\n" + lista_films_match))
+            elif len(film_match) > 1:
+                lista_films_match = ""
+                for film in film_match:
+                    lista_films_match += film.titolo + "\n"
+                TelegramUtils.send_message(context.bot, update.effective_chat.id,
+                                           ("Sii più specifico, quale tra questi?\n" + lista_films_match))
 
-        else:
-            film = film_match[0]
-            generi = handleDB.select_generi(db_conn_local, film.id_film)
-            spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
-            context.bot.send_photo(chat_id=update.effective_chat.id, photo=film.locandina_link)
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                     text=render_film(film, generi), parse_mode=telegram.ParseMode.MARKDOWN_V2)
-            if spettacoli:
-                messaggio = "*Programmazione*\n" + render_spettacoli(spettacoli)
+            else:
+                film = film_match[0]
+                generi = handleDB.select_generi(db_conn_local, film.id_film)
+                spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
+                context.bot.send_photo(chat_id=update.effective_chat.id, photo=film.locandina_link)
                 context.bot.send_message(chat_id=update.effective_chat.id,
-                                         text=messaggio, parse_mode=telegram.ParseMode.MARKDOWN_V2)
-    else:
-        adesso = datetime.now(timezone('Europe/Rome'))
-        film_in_programmazione = []
-        film_prossimamente = []
-        for film in films:
-            spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
-            if spettacoli:
-                film_in_programmazione.append(film)
-            elif adesso < pytz.timezone("Europe/Rome").localize(film.data_uscita):
-                film_prossimamente.append(film)
-        message = ""
-        if film_in_programmazione:
-            message += ":film_frames:Film in programmazione️:film_frames:\n"
-            for film in film_in_programmazione:
-                message += film.titolo + "\n"
-        if film_prossimamente:
-            ordina_per_data_di_uscita(film_prossimamente)
-            if message:
-                message += "\n"
-            data_local = None
-            for film in film_prossimamente:
-                if film.data_uscita != data_local:
-                    data_local = film.data_uscita
-                    message += ":calendar:In uscita il " + film.data_uscita.strftime("%d/%m/%Y") + "\n"
-                message += "- " + film.titolo + "\n"
+                                         text=render_film(film, generi), parse_mode=telegram.ParseMode.MARKDOWN_V2)
+                if spettacoli:
+                    messaggio = "*Programmazione*\n" + render_spettacoli(spettacoli)
+                    context.bot.send_message(chat_id=update.effective_chat.id,
+                                             text=messaggio, parse_mode=telegram.ParseMode.MARKDOWN_V2)
+        else:
+            adesso = datetime.now(timezone('Europe/Rome'))
+            film_in_programmazione = []
+            film_prossimamente = []
+            for film in films:
+                spettacoli = handleDB.select_spettacoli(db_conn_local, film.id_film)
+                if spettacoli:
+                    film_in_programmazione.append(film)
+                elif adesso < pytz.timezone("Europe/Rome").localize(film.data_uscita):
+                    film_prossimamente.append(film)
+            message = ""
+            if film_in_programmazione:
+                message += ":film_frames:Film in programmazione️:film_frames:\n"
+                for film in film_in_programmazione:
+                    message += film.titolo + "\n"
+            if film_prossimamente:
+                ordina_per_data_di_uscita(film_prossimamente)
+                if message:
+                    message += "\n"
+                data_local = None
+                for film in film_prossimamente:
+                    if film.data_uscita != data_local:
+                        data_local = film.data_uscita
+                        message += ":calendar:In uscita il " + film.data_uscita.strftime("%d/%m/%Y") + "\n"
+                    message += "- " + film.titolo + "\n"
 
-        context.bot.send_message(chat_id=update.effective_chat.id, text=emoji.emojize(message, use_aliases=True))
-    db_conn_local.close()
+            context.bot.send_message(chat_id=update.effective_chat.id, text=emoji.emojize(message, use_aliases=True))
+        db_conn_local.close()
+    except Exception as errore:
+        print("ERRORE\n")
+        print(errore)
+        logging.error(errore)
+        updater.bot.send_message(my_id, "\nErrore!")
+        if db_conn is not None:
+            db_conn.close()
 
 
 def sconosciuto(update, context):
